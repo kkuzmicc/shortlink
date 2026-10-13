@@ -1,0 +1,24 @@
+services:
+  service-link-management:
+    build:
+      context: ./backend-quarkus/service-link-management
+      dockerfile: Dockerfile
+    container_name: shortlink-link-management
+
+  service-redirect:
+    build:
+      context: ./backend-quarkus/service-redirect
+      dockerfile: Dockerfile
+    container_name: shortlink-redirect
+
+  service-analytics:
+    build:
+      context: ./backend-quarkus/sevrice-analytics
+      dockerfile: Dockerfile
+    container_name: shortlink-analytics
+
+  frontend:
+    build:
+      context: ./frontend-angular
+      dockerfile: Dockerfile
+    container_name: shortlink-frontend
