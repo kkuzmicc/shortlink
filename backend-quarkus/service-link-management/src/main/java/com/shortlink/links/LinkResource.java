@@ -1,16 +1,14 @@
 package com.shortlink.links;
 
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.net.URI;
 import java.sql.SQLException;
 import java.security.SecureRandom;
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Path("/api/links")
@@ -44,6 +42,7 @@ public class LinkResource {
 
             try {
                 LinkRepository.Link link = repository.insert(code, target, title);
+
                 return Response.created(URI.create("/api/links/" + code)).entity(link).build();
             } catch (SQLException e) {
                 if (!"23505".equals(e.getSQLState())) {
@@ -58,6 +57,18 @@ public class LinkResource {
             }
         }
         throw new IllegalStateException("Could not allocate a unique short code");
+    }
+
+    @GET
+    public Response list(@QueryParam("limit") @DefaultValue("20") int limit,
+                         @QueryParam("offset") @DefaultValue("0") int offset) {
+        if (limit < 1 || limit > 100 || offset < 0) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(new ApiError("limit must be 1–100 and offset must be nonnegative"))
+                    .build();
+        }
+        List<LinkRepository.Link> links = repository.list(limit, offset);
+        return Response.ok(links).build();
     }
 
     private String validate(CreateLinkRequest request) {
