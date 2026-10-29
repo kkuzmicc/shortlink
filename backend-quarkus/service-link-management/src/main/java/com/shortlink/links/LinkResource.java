@@ -6,7 +6,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import java.net.URI;
-import java.sql.SQLException;
+import org.hibernate.exception.ConstraintViolationException;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -44,9 +44,9 @@ public class LinkResource {
                 LinkRepository.Link link = repository.insert(code, target, title);
 
                 return Response.created(URI.create("/api/links/" + code)).entity(link).build();
-            } catch (SQLException e) {
-                if (!"23505".equals(e.getSQLState())) {
-                    throw new IllegalStateException("Could not create link", e);
+            } catch (RuntimeException e) {
+                if (!isCodeConflict(e)) {
+                    throw e;
                 }
 
                 if (customAlias) {
@@ -67,7 +67,7 @@ public class LinkResource {
                     .entity(new ApiError("limit must be 1–100 and offset must be nonnegative"))
                     .build();
         }
-        List<LinkRepository.Link> links = repository.list(limit, offset);
+        List<LinkRepository.Link> links = repository.getList(limit, offset);
         return Response.ok(links).build();
     }
 
@@ -112,6 +112,17 @@ public class LinkResource {
         }
 
         return code.toString();
+    }
+
+    private boolean isCodeConflict(Throwable failure) {
+        for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+            if (cause instanceof ConstraintViolationException violation
+                    && "23505".equals(violation.getSQLState())
+                    && "links_code_key".equals(violation.getConstraintName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public record CreateLinkRequest(String targetUrl, String title, String customAlias) {}
